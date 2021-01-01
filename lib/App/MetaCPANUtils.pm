@@ -26,12 +26,39 @@ our $release_fields = [
 
     ['download_url', 'download_url', 0],
 ];
+
+our $distribution_fields = [
+    # name for cli user, source field in API, include by default?
+    ['distribution', 'name'        , 1],
+];
+
 our %argopt_release_fields = (
     fields => {
         schema => ['array*', of=>['str*', in=>[ map {$_->[0]} @$release_fields ]]],
         default => [ map {$_->[0]} grep {$_->[2]} @$release_fields ],
         cmdline_aliases=>{f=>{}},
         tags => ['category:result'],
+    },
+);
+our %argopt_distribution_fields = (
+    fields => {
+        schema => ['array*', of=>['str*', in=>[ map {$_->[0]} @$distribution_fields ]]],
+        default => [ map {$_->[0]} grep {$_->[2]} @$distribution_fields ],
+        cmdline_aliases=>{f=>{}},
+        tags => ['category:result'],
+    },
+);
+
+our %argopt_release_sort = (
+    sort => {
+        schema => ['str*', in=>[qw/release -release date -date/]],
+        default => '-date',
+    },
+);
+our %argopt_distribution_sort = (
+    sort => {
+        schema => ['str*', in=>[qw/distribution -distribution/]],
+        default => 'distribution',
     },
 );
 
@@ -83,13 +110,6 @@ our %argoptf_first = (
     },
 );
 
-our %argopt_release_sort = (
-    sort => {
-        schema => ['str*', in=>[qw/release -release date -date/]],
-        default => '-date',
-    },
-);
-
 sub _resultset_to_envres {
     my ($resultset, $wanted_fields) = @_;
 
@@ -107,6 +127,8 @@ sub _resultset_to_envres {
             $row->{distribution} = $obj->distribution if grep {$_ eq 'distribution'} @$wanted_fields;
             $row->{abstract}     = $obj->abstract     if grep {$_ eq 'abstract'}     @$wanted_fields;
             $row->{first}        = $obj->first        if grep {$_ eq 'first'}        @$wanted_fields;
+        } elsif (ref $obj eq 'MetaCPAN::Client::Distribution') {
+            $row->{distribution} = $obj->name         if grep {$_ eq 'distribution'} @$wanted_fields;
         } else {
             die "Can't handle result $obj";
         }
@@ -223,6 +245,39 @@ sub list_metacpan_releases {
     _resultset_to_envres($res, $args{fields});
 }
 
+$SPEC{list_metacpan_distributions} = {
+    v => 1.1,
+    args => {
+        %argopt_distribution_fields,
+        %argopt_distribution_sort,
+
+        # nothing interesting can be filtered so far
+        %argoptf_author,
+    },
+};
+sub list_metacpan_distributions {
+    require MetaCPAN::Client;
+
+    my %args = @_;
+
+    my $mcpan = MetaCPAN::Client->new;
+
+    my $query = {all=>[]};
+    push @{ $query->{all} }, {author=>$args{author}}             if defined $args{author};
+    log_trace "MetaCPAN API query: %s", $query;
+
+    my $params = {};
+    $params->{_source} = _fields_to_source($args{fields}, $distribution_fields);
+    if (defined $args{sort}) {
+        $params->{sort} = [{name=>{order=>'asc'}}]  if $args{sort} eq 'distribution';
+        $params->{sort} = [{name=>{order=>'desc'}}] if $args{sort} eq '-distribution';
+    }
+    log_trace "MetaCPAN API query params: %s", $params;
+
+    my $res = $mcpan->distribution($query, $params);
+
+    _resultset_to_envres($res, $args{fields});
+}
 
 1;
 # ABSTRACT: CLI utilities related to MetaCPAN
