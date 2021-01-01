@@ -20,7 +20,7 @@ our $release_fields = [
     ['status'      , 'status'      , 1],
     ['maturity'    , 'maturity'    , 1],
     ['version'     , 'version'     , 1], # main module's $VERSION
-    ['first'       , 'first'       , 0], # useless? this field follows version defined in $VERSION so several releases might have first=1 e.g. see releases of XML-API-0.02 to 0.13 where $VERSION is set to 0.02
+    ['first'       , 'first'       , 1], # useless? this field follows version defined in $VERSION so several releases might have first=1 e.g. see releases of XML-API-0.02 to 0.13 where $VERSION is set to 0.02
     ['distribution', 'distribution', 1],
     ['abstract'    , 'abstract'    , 1],
 
