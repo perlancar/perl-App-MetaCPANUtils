@@ -17,6 +17,7 @@ our $release_fields = [
     ['release'     , 'name'        , 1],
     ['date'        , 'date'        , 1],
     ['author'      , 'author'      , 1],
+    ['status'      , 'status'      , 1],
     ['maturity'    , 'maturity'    , 1],
     ['version'     , 'version'     , 1], # main module's $VERSION
     ['first'       , 'first'       , 0], # useless? this field follows version defined in $VERSION so several releases might have first=1 e.g. see releases of XML-API-0.02 to 0.13 where $VERSION is set to 0.02
@@ -61,6 +62,23 @@ our %argoptf_from_date = (
 our %argoptf_to_date = (
     to_date => {
         schema => ["date*", "x.perl.coerce_to" => "DateTime"],
+        tags => ['category:filtering'],
+    },
+);
+our %argoptf_status = (
+    status => {
+        schema => ["str*", in=>[qw/latest cpan backpan/]],
+        tags => ['category:filtering'],
+        cmdline_aliases => {
+            latest  => {is_flag=>1, summary=>'Shortcut for --status=latest' , code=>sub { $_[0]{status} = 'latest' }},
+            cpan    => {is_flag=>1, summary=>'Shortcut for --status=cpan'   , code=>sub { $_[0]{status} = 'cpan' }},
+            backpan => {is_flag=>1, summary=>'Shortcut for --status=backpan', code=>sub { $_[0]{status} = 'backpan' }},
+        },
+    },
+);
+our %argoptf_first = (
+    first => {
+        schema => ["bool*"],
         tags => ['category:filtering'],
     },
 );
@@ -154,6 +172,8 @@ $SPEC{list_metacpan_releases} = {
         %argoptf_distribution,
         %argoptf_from_date,
         %argoptf_to_date,
+        %argoptf_status,
+        %argoptf_first,
     },
     examples => [
         {
@@ -182,6 +202,8 @@ sub list_metacpan_releases {
     my $query = {all=>[]};
     push @{ $query->{all} }, {author=>$args{author}}             if defined $args{author};
     push @{ $query->{all} }, {distribution=>$args{distribution}} if defined $args{distribution};
+    push @{ $query->{all} }, {status=>$args{status}}             if defined $args{status};
+    push @{ $query->{all} }, {first=>$args{first}}               if defined $args{first};
     log_trace "MetaCPAN API query: %s", $query;
 
     my $params = {};
