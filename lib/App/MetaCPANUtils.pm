@@ -52,6 +52,18 @@ our %argoptf_module = (
         tags => ['category:filtering'],
     },
 );
+our %argoptf_from_date = (
+    from_date => {
+        schema => ["date*", "x.perl.coerce_to" => "DateTime"],
+        tags => ['category:filtering'],
+    },
+);
+our %argoptf_to_date = (
+    to_date => {
+        schema => ["date*", "x.perl.coerce_to" => "DateTime"],
+        tags => ['category:filtering'],
+    },
+);
 
 our %argopt_release_sort = (
     sort => {
@@ -127,9 +139,12 @@ $SPEC{list_metacpan_releases} = {
     v => 1.1,
     args => {
         %argopt_release_fields,
+        %argopt_release_sort,
+
         %argoptf_author,
         %argoptf_distribution,
-        %argopt_release_sort,
+        %argoptf_from_date,
+        %argoptf_to_date,
     },
 };
 sub list_metacpan_releases {
@@ -146,6 +161,8 @@ sub list_metacpan_releases {
 
     my $params = {};
     $params->{_source} = _fields_to_source($args{fields}, $release_fields);
+    $params->{es_filter}{range}{date}{from} = $args{from_date}->ymd if defined $args{from_date};
+    $params->{es_filter}{range}{date}{to}   = $args{to_date}  ->ymd if defined $args{to_date};
     if (defined $args{sort}) {
         $params->{sort} = [{date=>{order=>'asc'}}]  if $args{sort} eq 'date';
         $params->{sort} = [{date=>{order=>'desc'}}] if $args{sort} eq '-date';
