@@ -118,16 +118,21 @@ our %argoptf_to_date = (
         tags => ['category:filtering'],
     },
 );
-our %argoptf_status = (
+our %argoptf_release_status = (
     status => {
         schema => ["str*", in=>[qw/latest cpan backpan/]],
-        default => 'latest',
         tags => ['category:filtering'],
         cmdline_aliases => {
             latest  => {is_flag=>1, summary=>'Shortcut for --status=latest' , code=>sub { $_[0]{status} = 'latest' }},
             cpan    => {is_flag=>1, summary=>'Shortcut for --status=cpan'   , code=>sub { $_[0]{status} = 'cpan' }},
             backpan => {is_flag=>1, summary=>'Shortcut for --status=backpan', code=>sub { $_[0]{status} = 'backpan' }},
         },
+    },
+);
+our %argoptf_module_status = (
+    status => {
+        %{ $argoptf_release_status{status} },
+        default => 'latest',
     },
 );
 our %argoptf_first = (
@@ -231,7 +236,7 @@ $SPEC{list_metacpan_releases} = {
         %argoptf_distribution,
         %argoptf_from_date,
         %argoptf_to_date,
-        %argoptf_status,
+        %argoptf_release_status,
         %argoptf_first,
     },
     examples => [
@@ -325,7 +330,7 @@ $SPEC{list_metacpan_modules} = {
         %argoptf_author,
         %argoptf_from_date,
         %argoptf_to_date,
-        %argoptf_status,
+        %argoptf_module_status,
     },
     examples => [
         {
