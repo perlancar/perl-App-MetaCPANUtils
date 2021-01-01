@@ -32,6 +32,18 @@ our $distribution_fields = [
     ['distribution', 'name'        , 1],
 ];
 
+our $module_fields = [
+    # name for cli user, source field in API, include by default?
+    ['module'      , 'package'     , 1],
+    ['date'        , 'date'        , 1],
+    ['author'      , 'author'      , 1],
+    ['status'      , 'status'      , 1],
+    ['maturity'    , 'maturity'    , 1],
+    ['version'     , 'version'     , 1], # main module's $VERSION
+    ['release'     , 'release'     , 1],
+    ['abstract'    , 'abstract'    , 1],
+];
+
 our %argopt_release_fields = (
     fields => {
         schema => ['array*', of=>['str*', in=>[ map {$_->[0]} @$release_fields ]]],
@@ -48,6 +60,14 @@ our %argopt_distribution_fields = (
         tags => ['category:result'],
     },
 );
+our %argopt_module_fields = (
+    fields => {
+        schema => ['array*', of=>['str*', in=>[ map {$_->[0]} @$module_fields ]]],
+        default => [ map {$_->[0]} grep {$_->[2]} @$module_fields ],
+        cmdline_aliases=>{f=>{}},
+        tags => ['category:result'],
+    },
+);
 
 our %argopt_release_sort = (
     sort => {
@@ -59,6 +79,12 @@ our %argopt_distribution_sort = (
     sort => {
         schema => ['str*', in=>[qw/distribution -distribution/]],
         default => 'distribution',
+    },
+);
+our %argopt_module_sort = (
+    sort => {
+        schema => ['str*', in=>[qw/module -module date -date author -author/]],
+        default => 'module',
     },
 );
 
@@ -95,6 +121,7 @@ our %argoptf_to_date = (
 our %argoptf_status = (
     status => {
         schema => ["str*", in=>[qw/latest cpan backpan/]],
+        default => 'latest',
         tags => ['category:filtering'],
         cmdline_aliases => {
             latest  => {is_flag=>1, summary=>'Shortcut for --status=latest' , code=>sub { $_[0]{status} = 'latest' }},
@@ -127,8 +154,18 @@ sub _resultset_to_envres {
             $row->{distribution} = $obj->distribution if grep {$_ eq 'distribution'} @$wanted_fields;
             $row->{abstract}     = $obj->abstract     if grep {$_ eq 'abstract'}     @$wanted_fields;
             $row->{first}        = $obj->first        if grep {$_ eq 'first'}        @$wanted_fields;
+            $row->{status}       = $obj->status       if grep {$_ eq 'status'}       @$wanted_fields;
         } elsif (ref $obj eq 'MetaCPAN::Client::Distribution') {
             $row->{distribution} = $obj->name         if grep {$_ eq 'distribution'} @$wanted_fields;
+        } elsif (ref $obj eq 'MetaCPAN::Client::Module') {
+            $row->{module}       = $obj->name         if grep {$_ eq 'module'}       @$wanted_fields; # ->package() doesn't work
+            $row->{date}         = $obj->date         if grep {$_ eq 'date'}         @$wanted_fields;
+            $row->{author}       = $obj->author       if grep {$_ eq 'author'}       @$wanted_fields;
+            $row->{maturity}     = $obj->maturity     if grep {$_ eq 'maturity'}     @$wanted_fields;
+            $row->{version}      = $obj->version      if grep {$_ eq 'version'}      @$wanted_fields;
+            $row->{release}      = $obj->release      if grep {$_ eq 'release'}      @$wanted_fields;
+            $row->{abstract}     = $obj->abstract     if grep {$_ eq 'abstract'}     @$wanted_fields;
+            $row->{status}       = $obj->status       if grep {$_ eq 'status'}       @$wanted_fields;
         } else {
             die "Can't handle result $obj";
         }
@@ -275,6 +312,58 @@ sub list_metacpan_distributions {
     log_trace "MetaCPAN API query params: %s", $params;
 
     my $res = $mcpan->distribution($query, $params);
+
+    _resultset_to_envres($res, $args{fields});
+}
+
+$SPEC{list_metacpan_modules} = {
+    v => 1.1,
+    args => {
+        %argopt_module_fields,
+        %argopt_module_sort,
+
+        %argoptf_author,
+        %argoptf_from_date,
+        %argoptf_to_date,
+        %argoptf_status,
+    },
+    examples => [
+        {
+            summary => "Show NEILB's modules",
+            src => '[[prog]] --author NEILB',
+            src_plang => 'bash',
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+    ],
+};
+sub list_metacpan_modules {
+    require MetaCPAN::Client;
+
+    my %args = @_;
+
+    my $mcpan = MetaCPAN::Client->new;
+
+    my $query = {all=>[]};
+    push @{ $query->{all} }, {author=>$args{author}}             if defined $args{author};
+    push @{ $query->{all} }, {status=>$args{status}}             if defined $args{status};
+    log_trace "MetaCPAN API query: %s", $query;
+
+    my $params = {};
+    $params->{_source} = _fields_to_source($args{fields}, $module_fields);
+    $params->{es_filter}{range}{date}{from} = $args{from_date}->ymd if defined $args{from_date};
+    $params->{es_filter}{range}{date}{to}   = $args{to_date}  ->ymd if defined $args{to_date};
+    if (defined $args{sort}) {
+        $params->{sort} = [{date=>{order=>'asc'}}]    if $args{sort} eq 'date';
+        $params->{sort} = [{date=>{order=>'desc'}}]   if $args{sort} eq '-date';
+        $params->{sort} = [{name=>{order=>'asc'}}]    if $args{sort} eq 'module';
+        $params->{sort} = [{name=>{order=>'desc'}}]   if $args{sort} eq '-module';
+        $params->{sort} = [{author=>{order=>'asc'}}]  if $args{sort} eq 'author';
+        $params->{sort} = [{author=>{order=>'desc'}}] if $args{sort} eq '-author';
+    }
+    log_trace "MetaCPAN API query params: %s", $params;
+
+    my $res = $mcpan->module($query, $params);
 
     _resultset_to_envres($res, $args{fields});
 }
