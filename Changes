@@ -1,3 +1,10 @@
+0.003   2021-01-01  Released-By: PERLANCAR; Urgency: low
+
+	- No functional changes.
+
+	- [doc] Add some examples.
+
+
 0.002   2021-01-01  Released-By: PERLANCAR; Urgency: medium
 
 	- Add CLI: list-metacpan-releases.
