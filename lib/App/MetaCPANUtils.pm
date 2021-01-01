@@ -124,6 +124,15 @@ $SPEC{list_recent_metacpan_releases} = {
         },
         %argopt_release_fields,
     },
+    examples => [
+        {
+            summary => 'Show 100 latest releases and show their download URLs',
+            src => '[[prog]] 100 -f download_url',
+            src_plang => 'bash',
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+    ],
 };
 sub list_recent_metacpan_releases {
     require MetaCPAN::Client;
@@ -146,6 +155,22 @@ $SPEC{list_metacpan_releases} = {
         %argoptf_from_date,
         %argoptf_to_date,
     },
+    examples => [
+        {
+            summary => 'Show releases in December 2020',
+            src => '[[prog]] --from-date 2020-12-01 --to-date 2020-12-31',
+            src_plang => 'bash',
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+        {
+            summary => "Show PERLANCAR's releases, show only their distribution, version, first (whether the release is the first release for the distribution), and download URL",
+            src => '[[prog]] --author PERLANCAR -f distribution -f version -f first -f download_url',
+            src_plang => 'bash',
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+    ],
 };
 sub list_metacpan_releases {
     require MetaCPAN::Client;
