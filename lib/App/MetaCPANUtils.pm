@@ -373,6 +373,42 @@ sub list_metacpan_modules {
     _resultset_to_envres($res, $args{fields});
 }
 
+$SPEC{open_metacpan_module_page} = {
+    v => 1.1,
+    args => {
+        module => {
+            schema => 'perl::modname*',
+            req => 1,
+            pos => 0,
+        },
+    },
+};
+sub open_metacpan_module_page {
+    require Browser::Open;
+
+    my %args = @_;
+    Browser::Open::open_browser("https://metacpan.org/pod/$args{module}");
+    [200];
+}
+
+$SPEC{open_metacpan_dist_page} = {
+    v => 1.1,
+    args => {
+        dist => {
+            schema => 'perl::distname*',
+            req => 1,
+            pos => 0,
+        },
+    },
+};
+sub open_metacpan_dist_page {
+    require Browser::Open;
+
+    my %args = @_;
+    Browser::Open::open_browser("https://metacpan.org/release/$args{dist}");
+    [200];
+}
+
 1;
 # ABSTRACT: CLI utilities related to MetaCPAN
 
@@ -398,3 +434,6 @@ Other distributions providing CLIs for MetaCPAN: L<MetaCPAN::Clients>,
 L<App::metacpansearch>.
 
 MetaCPAN API Client: L<MetaCPAN::Client>
+
+L<this-mod-on-metacpan>, L<this-dist-on-metacpan> from
+L<App::ThisDist::OnMetaCPAN>.
