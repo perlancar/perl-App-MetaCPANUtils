@@ -1,14 +1,14 @@
 package App::MetaCPANUtils;
 
-# AUTHORITY
-# DATE
-# DIST
-# VERSION
-
 use 5.010001;
 use strict;
 use warnings;
 use Log::ger;
+
+# AUTHORITY
+# DATE
+# DIST
+# VERSION
 
 our %SPEC;
 
@@ -114,6 +114,13 @@ our %argoptf_from_date = (
 );
 our %argoptf_to_date = (
     to_date => {
+        schema => ["date*", "x.perl.coerce_to" => "DateTime"],
+        tags => ['category:filtering'],
+    },
+);
+our %argoptf_date = (
+    date => {
+        summary => 'Select a single day, alternative to `from_date` + `to_date`',
         schema => ["date*", "x.perl.coerce_to" => "DateTime"],
         tags => ['category:filtering'],
     },
@@ -236,6 +243,7 @@ $SPEC{list_metacpan_releases} = {
         %argoptf_distribution,
         %argoptf_from_date,
         %argoptf_to_date,
+        %argoptf_date,
         %argoptf_release_status,
         %argoptf_first,
     },
@@ -255,6 +263,12 @@ $SPEC{list_metacpan_releases} = {
             'x.doc.show_result' => 0,
         },
     ],
+    args_rels => {
+        'choose_one&' => [
+            ['from_date', 'date'],
+            ['to_date', 'date'],
+        ],
+    },
 };
 sub list_metacpan_releases {
     require MetaCPAN::Client;
@@ -272,8 +286,13 @@ sub list_metacpan_releases {
 
     my $params = {};
     $params->{_source} = _fields_to_source($args{fields}, $release_fields);
-    $params->{es_filter}{range}{date}{from} = $args{from_date}->ymd if defined $args{from_date};
-    $params->{es_filter}{range}{date}{to}   = $args{to_date}  ->ymd if defined $args{to_date};
+    if (defined $args{date}) {
+        $params->{es_filter}{range}{date}{from} = $args{date}->ymd;
+        $params->{es_filter}{range}{date}{to}   = $args{date}->ymd;
+    } else {
+        $params->{es_filter}{range}{date}{from} = $args{from_date}->ymd if defined $args{from_date};
+        $params->{es_filter}{range}{date}{to}   = $args{to_date}  ->ymd if defined $args{to_date};
+    }
     if (defined $args{sort}) {
         $params->{sort} = [{date=>{order=>'asc'}}]  if $args{sort} eq 'date';
         $params->{sort} = [{date=>{order=>'desc'}}] if $args{sort} eq '-date';
