@@ -46,6 +46,8 @@ our $module_fields = [
 
 our %argopt_release_fields = (
     fields => {
+        'x.name.is_plural' => 1,
+        'x.name.singular' => 'field',
         schema => ['array*', of=>['str*', in=>[ map {$_->[0]} @$release_fields ]]],
         default => [ map {$_->[0]} grep {$_->[2]} @$release_fields ],
         cmdline_aliases=>{f=>{}},
@@ -54,6 +56,8 @@ our %argopt_release_fields = (
 );
 our %argopt_distribution_fields = (
     fields => {
+        'x.name.is_plural' => 1,
+        'x.name.singular' => 'field',
         schema => ['array*', of=>['str*', in=>[ map {$_->[0]} @$distribution_fields ]]],
         default => [ map {$_->[0]} grep {$_->[2]} @$distribution_fields ],
         cmdline_aliases=>{f=>{}},
@@ -62,6 +66,8 @@ our %argopt_distribution_fields = (
 );
 our %argopt_module_fields = (
     fields => {
+        'x.name.is_plural' => 1,
+        'x.name.singular' => 'field',
         schema => ['array*', of=>['str*', in=>[ map {$_->[0]} @$module_fields ]]],
         default => [ map {$_->[0]} grep {$_->[2]} @$module_fields ],
         cmdline_aliases=>{f=>{}},
@@ -167,6 +173,7 @@ sub _resultset_to_envres {
             $row->{abstract}     = $obj->abstract     if grep {$_ eq 'abstract'}     @$wanted_fields;
             $row->{first}        = $obj->first        if grep {$_ eq 'first'}        @$wanted_fields;
             $row->{status}       = $obj->status       if grep {$_ eq 'status'}       @$wanted_fields;
+            $row->{download_url} = $obj->download_url if grep {$_ eq 'download_url'} @$wanted_fields;
         } elsif (ref $obj eq 'MetaCPAN::Client::Distribution') {
             $row->{distribution} = $obj->name         if grep {$_ eq 'distribution'} @$wanted_fields;
         } elsif (ref $obj eq 'MetaCPAN::Client::Module') {
