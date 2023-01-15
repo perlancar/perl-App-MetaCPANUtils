@@ -10,6 +10,8 @@ use Log::ger;
 # DIST
 # VERSION
 
+use File::chdir;
+
 our %SPEC;
 
 our $release_fields = [
@@ -542,6 +544,78 @@ sub download_metacpan_release {
         'func.url' => $url,
         'func.version' => $rel->{version},
     }];
+}
+
+$SPEC{diff_metacpan_releases} = {
+    v => 1.1,
+    summary => 'Diff two release tarballs',
+    args => {
+        dist => {
+            schema => 'perl::distname*',
+            req => 1,
+            pos => 0,
+        },
+        version1 => {
+            schema => 'perl::module::release::version',
+            req => 1,
+            pos => 1,
+        },
+        version2 => {
+            schema => 'perl::module::release::version',
+            req => 1,
+            pos => 2,
+        },
+    },
+    examples => [
+        {
+            summary => 'What changed between App-orgadb 0.014 and 0.015?',
+            argv => [qw/App-orgadb 0.014 0.015/],
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+    ],
+    'x.envs' => {
+        'DIFF_METACPAN_RELEASES_DEBUG' => {
+            summary => 'Enable debugging',
+            description => <<'_',
+
+If set to true:
+- will not delete temporary directory used to store
+
+_
+            schema => 'bool*',
+        },
+    },
+};
+sub diff_metacpan_releases {
+    require File::Temp;
+    my %args = @_;
+
+    my $tempdir = File::Temp::tempdir(cleanup => !$ENV{DIFF_METACPAN_RELEASES_DEBUG});
+    log_debug "Temporary directory: %s", $tempdir;
+
+    local $CWD = $tempdir;
+
+    my $dlres1 = download_metacpan_release(
+        distribution => $args{dist},
+        version => $args{version1},
+    );
+    return [500, "Can't download $args{dist} version $args{version1}: $dlres1->[0] - $dlres1->[1]"]
+        unless $dlres1->[0] == 200;
+
+    my $dlres2 = download_metacpan_release(
+        distribution => $args{dist},
+        version => $args{version2},
+    );
+    return [500, "Can't download $args{dist} version $args{version2}: $dlres2->[0] - $dlres2->[1]"]
+        unless $dlres2->[0] == 200;
+
+    # XXX currently we just assume the two archives are tarballs
+    require App::DiffTarballs;
+    App::DiffTarballs::diff_tarballs(
+        tarball1 => $dlres1->[3]{'func.filename'},
+        tarball1 => $dlres2->[3]{'func.filename'},
+    );
 }
 
 1;
