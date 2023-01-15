@@ -236,6 +236,7 @@ sub list_recent_metacpan_releases {
     my %args = @_;
 
     my $mcpan = MetaCPAN::Client->new;
+    log_trace "[MetaCPAN::Client] Requesting recent %d release(s) ...", $args{n};
     my $recent = $mcpan->recent($args{n});
     _resultset_to_envres($recent, $args{fields});
 }
@@ -289,7 +290,6 @@ sub list_metacpan_releases {
     push @{ $query->{all} }, {distribution=>$args{distribution}} if defined $args{distribution};
     push @{ $query->{all} }, {status=>$args{status}}             if defined $args{status};
     push @{ $query->{all} }, {first=>$args{first}}               if defined $args{first};
-    log_trace "MetaCPAN API query: %s", $query;
 
     my $params = {};
     $params->{_source} = _fields_to_source($args{fields}, $release_fields);
@@ -306,8 +306,8 @@ sub list_metacpan_releases {
         $params->{sort} = [{name=>{order=>'asc'}}]  if $args{sort} eq 'release';
         $params->{sort} = [{name=>{order=>'desc'}}] if $args{sort} eq '-release';
     }
-    log_trace "MetaCPAN API query params: %s", $params;
 
+    log_trace "[MetaCPAN::Client] Requesting releases (query=%s, params=%s) ...", $query, $params;
     my $res = $mcpan->release($query, $params);
 
     _resultset_to_envres($res, $args{fields});
@@ -332,7 +332,6 @@ sub list_metacpan_distributions {
 
     my $query = {all=>[]};
     push @{ $query->{all} }, {author=>$args{author}}             if defined $args{author};
-    log_trace "MetaCPAN API query: %s", $query;
 
     my $params = {};
     $params->{_source} = _fields_to_source($args{fields}, $distribution_fields);
@@ -340,8 +339,8 @@ sub list_metacpan_distributions {
         $params->{sort} = [{name=>{order=>'asc'}}]  if $args{sort} eq 'distribution';
         $params->{sort} = [{name=>{order=>'desc'}}] if $args{sort} eq '-distribution';
     }
-    log_trace "MetaCPAN API query params: %s", $params;
 
+    log_trace "[MetaCPAN::Client] Requesting distributions (query=%s, params=%s) ...", $query, $params;
     my $res = $mcpan->distribution($query, $params);
 
     _resultset_to_envres($res, $args{fields});
@@ -378,7 +377,6 @@ sub list_metacpan_modules {
     my $query = {all=>[]};
     push @{ $query->{all} }, {author=>$args{author}}             if defined $args{author};
     push @{ $query->{all} }, {status=>$args{status}}             if defined $args{status};
-    log_trace "MetaCPAN API query: %s", $query;
 
     my $params = {};
     $params->{_source} = _fields_to_source($args{fields}, $module_fields);
@@ -392,8 +390,8 @@ sub list_metacpan_modules {
         $params->{sort} = [{author=>{order=>'asc'}}]  if $args{sort} eq 'author';
         $params->{sort} = [{author=>{order=>'desc'}}] if $args{sort} eq '-author';
     }
-    log_trace "MetaCPAN API query params: %s", $params;
 
+    log_trace "[MetaCPAN::Client] Requesting modules (query=%s, params=%s) ...", $query, $params;
     my $res = $mcpan->module($query, $params);
 
     _resultset_to_envres($res, $args{fields});
@@ -432,6 +430,113 @@ sub open_metacpan_dist_page {
 
     my %args = @_;
     Browser::Open::open_browser("https://metacpan.org/release/$args{dist}");
+    [200];
+}
+
+$SPEC{list_metacpan_distribution_versions} = {
+    v => 1.1,
+    summary => 'List all versions of a distribution',
+    description => <<'_',
+
+The versions will be sorted in a descending order.
+
+_
+    args => {
+        dist => {
+            schema => 'perl::distname*',
+            req => 1,
+            pos => 0,
+        },
+    },
+};
+sub list_metacpan_distribution_versions {
+    my %args = @_;
+    my $res = list_metacpan_releases(
+        distribution => $args{dist},
+        fields => ['version'],
+    );
+    return $res unless $res->[0] == 200;
+    [200, "OK", [sort { version->parse($b) <=> version->parse($a) } map {$_->{version}} @{$res->[2]}]];
+}
+
+$SPEC{download_metacpan_release} = {
+    v => 1.1,
+    summary => 'Download a release to the current directory',
+    description => <<'_',
+
+Uses <pm:HTTP::Tiny::Plugin> so you can customize download behavior using
+e.g. `HTTP_TINY_PLUGINS` environment variable.
+
+_
+    args => {
+        dist => {
+            schema => 'perl::distname*',
+            req => 1,
+            pos => 0,
+        },
+        version => {
+            summary => 'If unspecified, will select the latest release',
+            schema => 'perl::module::release::version',
+            pos => 1,
+        },
+        overwrite => {
+            summary => 'Whether to overwrite existing downloaded file',
+            schema => 'true*',
+            cmdline_aliases => {O=>{}},
+        },
+        # XXX filename
+    },
+    examples => [
+        {
+            summary => 'Download latest release of App-orgadb distribution',
+            argv => [qw/App-orgadb/],
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+        {
+            summary => 'Download the second latest release of App-orgadb distribution',
+            argv => [qw/App-orgadb latest-1/],
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+    ],
+};
+sub download_metacpan_release {
+    my %args = @_;
+
+    my $res = list_metacpan_releases(
+        distribution => $args{dist},
+        fields => [qw/version date author download_url/],
+    );
+    return $res unless $res->[0] == 200;
+    #use DD; dd $res;
+
+    my $rels = [sort {version->parse($b->{version}) <=> version->parse($a->{version})} @{$res->[2]}];
+    #use DD; dd $rels;
+
+    require Module::Release::Select;
+    my $rel = Module::Release::Select::select_release(
+        {detail=>1}, $args{version}, $rels);
+    #use DD; dd $rel;
+    return [404, "Version $args{version} of distribution $args{dist} not found in releases"] unless $rel;
+
+    my $url = $rel->{download_url};
+    (my $filename = $url) =~ s!.+/!!;
+    return [412, "File '$filename' already exists, not overwriting (use -O to overwrite)"]
+        if (-f $filename) && !$args{overwrite};
+
+    open my $fh, ">", $filename
+        or return [500, "Can't open $filename for writing: $!"];
+
+    require HTTP::Tiny::Plugin;
+    log_trace "Downloading %s ...", $url;
+    my $dlres = HTTP::Tiny::Plugin->new->get($url);
+    return [500, "Can't download $url: $dlres->{status} - $dlres->{reason}"]
+        unless $dlres->{success};
+
+    print $fh $dlres->{content};
+    close $fh or return [500, "Can't write $filename: $!"];
+
     [200];
 }
 
