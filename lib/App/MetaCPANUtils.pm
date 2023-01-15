@@ -420,7 +420,7 @@ sub open_metacpan_module_page {
 $SPEC{open_metacpan_dist_page} = {
     v => 1.1,
     args => {
-        dist => {
+        distribution => {
             schema => 'perl::distname*',
             req => 1,
             pos => 0,
@@ -431,7 +431,7 @@ sub open_metacpan_dist_page {
     require Browser::Open;
 
     my %args = @_;
-    Browser::Open::open_browser("https://metacpan.org/release/$args{dist}");
+    Browser::Open::open_browser("https://metacpan.org/release/$args{distribution}");
     [200];
 }
 
@@ -444,7 +444,7 @@ The versions will be sorted in a descending order.
 
 _
     args => {
-        dist => {
+        distribution => {
             schema => 'perl::distname*',
             req => 1,
             pos => 0,
@@ -454,7 +454,7 @@ _
 sub list_metacpan_distribution_versions {
     my %args = @_;
     my $res = list_metacpan_releases(
-        distribution => $args{dist},
+        distribution => $args{distribution},
         fields => ['version'],
     );
     return $res unless $res->[0] == 200;
@@ -471,7 +471,7 @@ e.g. `HTTP_TINY_PLUGINS` environment variable.
 
 _
     args => {
-        dist => {
+        distribution => {
             schema => 'perl::distname*',
             req => 1,
             pos => 0,
@@ -507,7 +507,7 @@ sub download_metacpan_release {
     my %args = @_;
 
     my $res = list_metacpan_releases(
-        distribution => $args{dist},
+        distribution => $args{distribution},
         fields => [qw/version date author download_url/],
     );
     return $res unless $res->[0] == 200;
@@ -520,7 +520,7 @@ sub download_metacpan_release {
     my $rel = Module::Release::Select::select_release(
         {detail=>1}, $args{version}, $rels);
     #use DD; dd $rel;
-    return [404, "Version $args{version} of distribution $args{dist} not found in releases"] unless $rel;
+    return [404, "Version $args{version} of distribution $args{distribution} not found in releases"] unless $rel;
 
     my $url = $rel->{download_url};
     (my $filename = $url) =~ s!.+/!!;
@@ -550,7 +550,7 @@ $SPEC{diff_metacpan_releases} = {
     v => 1.1,
     summary => 'Diff two release tarballs',
     args => {
-        dist => {
+        distribution => {
             schema => 'perl::distname*',
             req => 1,
             pos => 0,
@@ -570,6 +570,12 @@ $SPEC{diff_metacpan_releases} = {
         {
             summary => 'What changed between App-orgadb 0.014 and 0.015?',
             argv => [qw/App-orgadb 0.014 0.015/],
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+        {
+            summary => 'What changed in the latest version of App-orgadb?',
+            argv => [qw/App-orgadb latest-1 latest/],
             test => 0,
             'x.doc.show_result' => 0,
         },
@@ -597,24 +603,24 @@ sub diff_metacpan_releases {
     local $CWD = $tempdir;
 
     my $dlres1 = download_metacpan_release(
-        distribution => $args{dist},
+        distribution => $args{distribution},
         version => $args{version1},
     );
-    return [500, "Can't download $args{dist} version $args{version1}: $dlres1->[0] - $dlres1->[1]"]
+    return [500, "Can't download $args{distribution} version $args{version1}: $dlres1->[0] - $dlres1->[1]"]
         unless $dlres1->[0] == 200;
 
     my $dlres2 = download_metacpan_release(
-        distribution => $args{dist},
+        distribution => $args{distribution},
         version => $args{version2},
     );
-    return [500, "Can't download $args{dist} version $args{version2}: $dlres2->[0] - $dlres2->[1]"]
+    return [500, "Can't download $args{distribution} version $args{version2}: $dlres2->[0] - $dlres2->[1]"]
         unless $dlres2->[0] == 200;
 
     # XXX currently we just assume the two archives are tarballs
     require App::DiffTarballs;
     App::DiffTarballs::diff_tarballs(
         tarball1 => $dlres1->[3]{'func.filename'},
-        tarball1 => $dlres2->[3]{'func.filename'},
+        tarball2 => $dlres2->[3]{'func.filename'},
     );
 }
 
