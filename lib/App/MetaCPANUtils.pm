@@ -537,7 +537,11 @@ sub download_metacpan_release {
     print $fh $dlres->{content};
     close $fh or return [500, "Can't write $filename: $!"];
 
-    [200];
+    [200, "OK", undef, {
+        'func.filename' => $filename,
+        'func.url' => $url,
+        'func.version' => $rel->{version},
+    }];
 }
 
 1;
