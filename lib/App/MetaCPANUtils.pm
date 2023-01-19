@@ -579,6 +579,12 @@ $SPEC{diff_metacpan_releases} = {
             test => 0,
             'x.doc.show_result' => 0,
         },
+        {
+            summary => 'Compare the latest version of Log::Any released by JSWARTZ and the latest version released by DAGOLDEN',
+            argv => ['Log-Any', 'author="JSWARTZ"', 'author="DAGOLDEN"'],
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
     ],
     'x.envs' => {
         'DIFF_METACPAN_RELEASES_DEBUG' => {
